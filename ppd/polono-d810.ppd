@@ -1,0 +1,72 @@
+*PPD-Adobe: "4.3"
+*% Polono D810 portable thermal printer (A4 / Letter / Legal).
+*% Raster is produced by the d810-filter, see ~/d810-driver/d810.py.
+*FormatVersion: "4.3"
+*FileVersion: "1.0"
+*LanguageVersion: English
+*LanguageEncoding: ISOLatin1
+*PCFileName: "D810.PPD"
+*Manufacturer: "Polono"
+*Product: "(D810)"
+*ModelName: "Polono D810"
+*ShortNickName: "Polono D810"
+*NickName: "Polono D810 (open driver)"
+*1284DeviceID: "MFG:;CMD:XPP,XL;MDL:D810;CLS:PRINTER;DES:D810;"
+*PSVersion: "(3010.000) 0"
+*LanguageLevel: "3"
+*ColorDevice: False
+*DefaultColorSpace: Gray
+*FileSystem: False
+*Throughput: "1"
+*cupsVersion: 2.4
+*cupsManualCopies: True
+*cupsFilter: "application/pdf 0 d810-filter"
+
+*% Printable area matches Polono's own macOS PPD.
+*OpenUI *PageSize/Paper Size: PickOne
+*OrderDependency: 10 AnySetup *PageSize
+*DefaultPageSize: A4
+*PageSize A4/A4 (switch on 210): "<</PageSize[572 826]/ImagingBBox null>>setpagedevice"
+*PageSize Letter/US Letter (switch on 216): "<</PageSize[589 790]/ImagingBBox null>>setpagedevice"
+*PageSize Legal/US Legal (switch on 216): "<</PageSize[589 993]/ImagingBBox null>>setpagedevice"
+*CloseUI: *PageSize
+
+*OpenUI *PageRegion: PickOne
+*OrderDependency: 10 AnySetup *PageRegion
+*DefaultPageRegion: A4
+*PageRegion A4/A4: "<</PageSize[572 826]/ImagingBBox null>>setpagedevice"
+*PageRegion Letter/US Letter: "<</PageSize[589 790]/ImagingBBox null>>setpagedevice"
+*PageRegion Legal/US Legal: "<</PageSize[589 993]/ImagingBBox null>>setpagedevice"
+*CloseUI: *PageRegion
+
+*DefaultImageableArea: A4
+*ImageableArea A4: "0 0 572 826"
+*ImageableArea Letter: "0 0 589 790"
+*ImageableArea Legal: "0 0 589 993"
+*DefaultPaperDimension: A4
+*PaperDimension A4: "572 826"
+*PaperDimension Letter: "589 790"
+*PaperDimension Legal: "589 993"
+
+*OpenUI *MediaType/Paper Type: PickOne
+*OrderDependency: 20 AnySetup *MediaType
+*DefaultMediaType: Fold
+*MediaType Fold/Fold paper (black marks): ""
+*MediaType Roll/Roll or single sheets: ""
+*MediaType Label/Label paper: ""
+*MediaType Tattoo/Tattoo transfer paper: ""
+*CloseUI: *MediaType
+
+*OpenUI *Darkness/Darkness: PickOne
+*OrderDependency: 20 AnySetup *Darkness
+*DefaultDarkness: High
+*Darkness Low/Low: ""
+*Darkness Medium/Medium: ""
+*Darkness High/High: ""
+*CloseUI: *Darkness
+
+*OpenUI *Resolution/Resolution: PickOne
+*OrderDependency: 10 AnySetup *Resolution
+*DefaultResolution: 203dpi
+*Resolution 203dpi/203 dpi: "<</HWResolution[203 203]>>setpagedevice"
+*CloseUI: *Resolution

@@ -1,0 +1,102 @@
+#!/usr/bin/python3
+"""
+CUPS filter for the Polono D810.
+
+CUPS calls this as:  d810-filter job-id user title copies options [file]
+Input is a PDF (from pdftopdf), output on stdout is raw D810 data that the
+usb backend sends straight to the printer.
+
+Options come from two places: the job's option string (argv[5]) and the
+Default* lines in the queue's PPD (path in $PPD). The job string wins.
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import sys
+import tempfile
+from pathlib import Path
+
+# The encoder lives next to us during development, or in /usr/lib/d810 when installed.
+for candidate in (os.environ.get("D810_LIB"), "/usr/lib/d810", str(Path(__file__).resolve().parent.parent)):
+    if candidate and (Path(candidate) / "d810.py").exists():
+        sys.path.insert(0, candidate)
+        break
+
+from d810 import Darkness, JobSettings, Media, Paper, encode  # noqa: E402
+
+
+class OptionReader:
+    """Merges PPD defaults with per-job options into a simple dict."""
+
+    def __init__(self, job_options: str, ppd_path: str | None) -> None:
+        self.values: dict[str, str] = {}
+        if ppd_path and Path(ppd_path).exists():
+            self._load_ppd_defaults(Path(ppd_path))
+        self._load_job_options(job_options)
+
+    def _load_ppd_defaults(self, ppd: Path) -> None:
+        for line in ppd.read_text(errors="ignore").splitlines():
+            # e.g. *DefaultDarkness: High
+            if line.startswith("*Default") and ":" in line:
+                key, val = line[len("*Default"):].split(":", 1)
+                self.values[key.strip()] = val.strip()
+
+    def _load_job_options(self, opts: str) -> None:
+        for token in opts.split():
+            if "=" in token:
+                k, v = token.split("=", 1)
+                self.values[k] = v
+            elif token.startswith("no"):
+                self.values[token[2:]] = "False"
+
+    def get(self, key: str, default: str) -> str:
+        return self.values.get(key, default)
+
+
+PAPER_MAP = {"A4": Paper.A4, "Letter": Paper.LETTER, "Legal": Paper.LEGAL}
+MEDIA_MAP = {"Fold": Media.FOLD, "Roll": Media.ROLL, "Label": Media.LABEL, "Tattoo": Media.TATTOO}
+DARK_MAP = {"Low": Darkness.LOW, "Medium": Darkness.MEDIUM, "High": Darkness.HIGH}
+
+
+def settings_from(opts: OptionReader) -> JobSettings:
+    # "media=Letter" is what some apps send instead of PageSize.
+    size = opts.get("PageSize", opts.get("media", "A4"))
+    return JobSettings(
+        paper=PAPER_MAP.get(size, Paper.A4),
+        media=MEDIA_MAP.get(opts.get("MediaType", "Fold"), Media.FOLD),
+        darkness=DARK_MAP.get(opts.get("Darkness", "High"), Darkness.HIGH),
+    )
+
+
+def main() -> int:
+    if len(sys.argv) not in (6, 7):
+        print("Usage: d810-filter job-id user title copies options [file]", file=sys.stderr)
+        return 1
+
+    opts = OptionReader(sys.argv[5], os.environ.get("PPD"))
+    settings = settings_from(opts)
+    print(f"DEBUG: d810 settings {settings}", file=sys.stderr)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        if len(sys.argv) == 7:
+            pdf = Path(sys.argv[6])
+        else:
+            # Ghostscript wants a seekable file, so spool stdin to disk first.
+            pdf = Path(tmp) / "job.pdf"
+            with open(pdf, "wb") as f:
+                shutil.copyfileobj(sys.stdin.buffer, f)
+
+        try:
+            pages = encode(pdf, settings, sys.stdout.buffer)
+        except Exception as exc:  # report to CUPS instead of a bare traceback
+            print(f"ERROR: d810 filter failed: {exc}", file=sys.stderr)
+            return 1
+
+    print(f"INFO: sent {pages} page(s) to D810", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
